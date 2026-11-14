@@ -5,7 +5,11 @@ const config: NextConfig = {
   serverExternalPackages: ["playwright", "playwright-core", "@sparticuz/chromium", "sharp", "postgres"],
   // make sure Vercel ships the Chromium binary and the report fonts with the PDF function
   outputFileTracingIncludes: {
-    "/api/reports/[id]/pdf": ["./node_modules/@sparticuz/chromium/bin/**", "./fonts/**"],
+    "/api/reports/[id]/pdf": [
+      "./node_modules/playwright-core/**",
+      "./node_modules/@sparticuz/chromium/**",
+      "./fonts/**",
+    ],
   },
   // report images are stored as data-URLs inside JSONB
   experimental: { serverActions: { bodySizeLimit: "25mb" } },
