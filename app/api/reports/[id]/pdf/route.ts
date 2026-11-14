@@ -1,5 +1,7 @@
 import { guard } from "@/lib/auth";
-import { chromium, type Browser } from "playwright";
+import { getBrowser } from "@/lib/browser";
+import { fontCss } from "@/lib/fonts";
+import { fileResponse } from "@/lib/stream";
 import { getReportWithTemplate } from "@/lib/data";
 import { renderReportHtml } from "@/lib/render-html";
 import { fileSafe } from "@/lib/utils";
@@ -9,26 +11,17 @@ import { PDFDocument, PDFName } from "pdf-lib";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const g = globalThis as unknown as { __browser?: Promise<Browser> };
-const getBrowser = () => {
-  if (!g.__browser)
-    g.__browser = chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] }).catch((e) => {
-      g.__browser = undefined;
-      throw e;
-    });
-  return g.__browser;
-};
-
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const __u = await guard();
   if (__u instanceof Response) return __u;
   const { id } = await params;
   const row = await getReportWithTemplate(id);
   if (!row) return new Response("Not found", { status: 404 });
-  const html = renderReportHtml(row.template.schema, await inlineAssets(row.report.data), { title: row.report.title, period: row.report.period });
+  const html0 = renderReportHtml(row.template.schema, await inlineAssets(row.report.data), { title: row.report.title, period: row.report.period });
+  const html = html0.replace("<style>", `<style>${fontCss()}</style><style>`);
   try {
     const page = await (await getBrowser()).newPage();
-    await page.setContent(html, { waitUntil: "load" });
+    await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
     await page.evaluate(() => document.fonts.ready);
     const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
     await page.close();
@@ -41,10 +34,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       doc.catalog.set(PDFName.of("PageMode"), PDFName.of("UseAttachments")); // open the Attachments panel
       out = await doc.save();
     }
-    return new Response(new Uint8Array(out), {
-      headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${fileSafe(row.report.title + " " + row.report.period)}.pdf"` },
-    });
+    return fileResponse(out, "application/pdf", `${fileSafe(row.report.title + " " + row.report.period)}.pdf`);
   } catch (e) {
-    return new Response(`PDF export failed: ${(e as Error).message}\nRun "npm run setup:pdf" once to install Chromium.`, { status: 500 });
+    return new Response(`PDF export failed: ${(e as Error).message}\n(Local: run \"npm run setup:pdf\" once. Vercel: see README, \"Deploying to Vercel\".)`, { status: 500 });
   }
 }

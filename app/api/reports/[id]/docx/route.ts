@@ -1,3 +1,4 @@
+import { fileResponse } from "@/lib/stream";
 import { guard } from "@/lib/auth";
 import { getReportWithTemplate } from "@/lib/data";
 import { renderReportDocx } from "@/lib/render-docx";
@@ -14,10 +15,5 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const row = await getReportWithTemplate(id);
   if (!row) return new Response("Not found", { status: 404 });
   const buf = await renderReportDocx(row.template.schema, await inlineAssets(row.report.data), { title: row.report.title, period: row.report.period });
-  return new Response(new Uint8Array(buf), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "Content-Disposition": `attachment; filename="${fileSafe(row.report.title + " " + row.report.period)}.docx"`,
-    },
-  });
+  return fileResponse(new Uint8Array(buf), "application/vnd.openxmlformats-officedocument.wordprocessingml.document", `${fileSafe(row.report.title + " " + row.report.period)}.docx`);
 }

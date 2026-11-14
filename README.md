@@ -89,3 +89,13 @@ Templates → *Add section*: tick what it should contain (notes, key numbers, ta
 - **Sidebar** layout: Dashboard (overview), Reports, Templates, Settings, Users, Inbox, My profile; collapsible, mobile drawer, light/pure-black dark.
 - **Settings** (admin): *Appearance* (Ocean blue, **Sunset orange**, Emerald, Violet, or custom colours), *Company* (name, footer, page header), *Cover & layout* (cover style, A4/Letter, page numbers, contents page, At-a-glance page), *Export & photos* (attach originals to PDF, file names), *Live preview*. Stored per template, applied to PDF and Word.
 - Existing templates keep working: new options default to the previous look.
+
+## Deploying to Vercel
+PDF export runs headless Chromium. On Vercel the app automatically uses `@sparticuz/chromium` (a serverless build) with `playwright-core`; locally it uses normal Playwright.
+
+1. `npm install` (adds `@sparticuz/chromium`, `playwright-core`), commit, push, redeploy.
+2. Set `DATABASE_URL` to a hosted Postgres (Neon, Supabase, Vercel Postgres) in Project -> Settings -> Environment Variables.
+3. The PDF function needs memory: Project -> Settings -> Functions -> Memory 2048 MB or more; `maxDuration` is 60 s (Hobby plan max is 60 s).
+4. Inter fonts are embedded from `fonts/`, so the PDF looks the same as locally.
+5. If a PDF still fails, open Vercel -> Logs for `/api/reports/.../pdf` and read the error; the app shows it in the toast too.
+Downloads are streamed, so Vercel's 4.5 MB response limit does not apply.
