@@ -100,7 +100,7 @@ export function AppShell({ user, unread, children }: { user: ShellUser; unread: 
 
   const brand = (compact: boolean) => (
     <div className={cn("flex h-16 items-center gap-3 px-4", compact && "justify-center px-0")}>
-      <Link href="/dashboard" className="flex items-center gap-3"><Logo size={34} />{!compact && <span className="leading-tight"><span className="block text-[15px] font-bold tracking-tight">Station Report</span><span className="brand-text block text-[11px] font-semibold uppercase tracking-[0.2em]">Studio</span></span>}</Link>
+      <Link href="/dashboard" className="flex items-center gap-3"><Logo size={34} />{!compact && <span className="leading-tight"><span className="block text-[17px] font-extrabold tracking-tight">Orbis</span><span className="brand-text block text-[10px] font-semibold uppercase tracking-[0.2em]">Station reports</span></span>}</Link>
     </div>
   );
 
@@ -119,7 +119,7 @@ export function AppShell({ user, unread, children }: { user: ShellUser; unread: 
       {/* mobile top bar + drawer */}
       <div className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-sidebar-border bg-sidebar/90 px-4 backdrop-blur lg:hidden">
         <button onClick={() => setMobile(true)} aria-label="Open menu" className="grid size-9 place-items-center rounded-lg hover:bg-muted"><Menu className="size-5" /></button>
-        <Logo size={28} /><span className="text-sm font-bold">Station Report Studio</span>
+        <Logo size={28} /><span className="text-sm font-bold">Orbis</span>
       </div>
       {mobile && (
         <div className="fixed inset-0 z-50 lg:hidden">

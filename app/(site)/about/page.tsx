@@ -19,7 +19,7 @@ export default function About() {
         <div className="relative mx-auto max-w-4xl px-4 pb-14 pt-20 text-center sm:px-8">
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-primary">About</span>
           <h1 className="mt-4 text-balance text-5xl font-extrabold leading-tight tracking-tight">We turn a month of station data into <span className="brand-text">one great report</span>.</h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">Station Report Studio started with a simple frustration: every month, the same long Word document – rebuilt by hand, photos pasted one by one, page numbers breaking. We built the tool we wanted to use.</p>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">Orbis started with a simple frustration: every month, the same long Word document – rebuilt by hand, photos pasted one by one, page numbers breaking. We built the tool we wanted to use.</p>
         </div>
         <div className="relative mx-auto max-w-6xl px-4 pb-20 sm:px-8"><FlowScene className="w-full drop-shadow-2xl" /></div>
       </section>

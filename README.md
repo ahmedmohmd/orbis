@@ -1,4 +1,4 @@
-# Station Report Studio
+# Orbis
 
 Monthly station report generator – **Next.js 16 · React 19 · Tailwind CSS 4 · shadcn/ui-style components · PostgreSQL (Drizzle)**.
 Fill in the report once a month, preview it, export a designed **PDF** or **Word** file.

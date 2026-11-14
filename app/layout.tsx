@@ -3,7 +3,7 @@ import "./globals.css";
 import { ThemeProvider, themeScript } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: { default: "Station Report Studio", template: "%s · Station Report Studio" },
+  title: { default: "Orbis", template: "%s · Orbis" },
   description: "Build, edit and export beautiful monthly station reports – PDF and Word, in minutes.",
 };
 
