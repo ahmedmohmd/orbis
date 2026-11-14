@@ -1,3 +1,4 @@
+import { INTER_WOFF, WEIGHTS, fontCss } from "./fonts";
 const g = globalThis as unknown as { __pw?: Promise<any>; __pp?: Promise<any> };
 const serverless = () => !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
@@ -16,16 +17,24 @@ async function pdfServerless(html: string): Promise<Uint8Array> {
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
-    await page.evaluate(() => document.fonts.ready);
-    const diag = await page.evaluate(async () => {
-      const out: string[] = [];
-      for (const f of [...document.fonts]) {
-        try { await f.load(); } catch (e) { out.push(`${f.family} ${f.weight}: ${(e as Error).message}`); }
+    // Serverless Chromium refuses data: URLs in @font-face ("network error"), so hand it the font bytes directly.
+    const faces = WEIGHTS.map(([weight, name]) => ({ weight, b64: INTER_WOFF[name] }));
+    const err = await page.evaluate(async (list) => {
+      const errors: string[] = [];
+      for (const f of list) {
+        try {
+          const bin = atob(f.b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const face = new FontFace("Inter", bytes.buffer, { weight: String(f.weight), style: "normal" });
+          await face.load();
+          document.fonts.add(face);
+        } catch (e) { errors.push(`${f.weight}: ${(e as Error).message}`); }
       }
-      return { errors: out, faces: [...document.fonts].map((f) => `${f.weight}:${f.status}`).join(" "), body: getComputedStyle(document.body).fontFamily.slice(0, 60) };
-    });
-    if (!diag.faces) throw new Error(`No report fonts were injected [${diag.body}]`);
-    if (diag.errors.length) throw new Error(`Report font failed to load -> ${diag.errors.join(" | ")} [faces ${diag.faces}] [${diag.body}]`);
+      await document.fonts.ready;
+      return errors;
+    }, faces);
+    if (err.length) throw new Error(`Report font failed to load -> ${err.join(" | ")}`);
     return await page.pdf(OPTS);
   } finally {
     await browser.close().catch(() => {});
@@ -33,7 +42,8 @@ async function pdfServerless(html: string): Promise<Uint8Array> {
 }
 
 /** Local / Docker / VPS: full Playwright, one shared browser. */
-async function pdfLocal(html: string): Promise<Uint8Array> {
+async function pdfLocal(html0: string): Promise<Uint8Array> {
+  const html = html0.replace("<style>", `<style>${fontCss()}</style><style>`);
   const { chromium } = await import("playwright");
   const get = async () => {
     if (g.__pw) {

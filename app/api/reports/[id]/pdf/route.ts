@@ -1,6 +1,5 @@
 import { guard } from "@/lib/auth";
 import { renderPdf } from "@/lib/browser";
-import { fontCss } from "@/lib/fonts";
 import { fileResponse } from "@/lib/stream";
 import { getReportWithTemplate } from "@/lib/data";
 import { renderReportHtml } from "@/lib/render-html";
@@ -17,8 +16,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const { id } = await params;
   const row = await getReportWithTemplate(id);
   if (!row) return new Response("Not found", { status: 404 });
-  const html0 = renderReportHtml(row.template.schema, await inlineAssets(row.report.data), { title: row.report.title, period: row.report.period });
-  const html = html0.replace("<style>", `<style>${fontCss()}</style><style>`);
+  const html = renderReportHtml(row.template.schema, await inlineAssets(row.report.data), { title: row.report.title, period: row.report.period });
   try {
     const pdf = await renderPdf(html);
     // attach every original photo to the PDF itself (paperclip / Attachments panel of any PDF reader)
