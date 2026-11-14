@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f6f8fb;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #eef2f7;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --accent: #e0ecff;
+  --accent-foreground: #1e3a8a;
+  --destructive: #dc2626;
+  --ring: #3b82f6;
+  --radius: 0.75rem;
+}
+/* pure-black dark theme */
+.dark {
+  --background: #000000;
+  --foreground: #f1f5f9;
+  --card: #0a0a0a;
+  --card-foreground: #f1f5f9;
+  --muted: #141414;
+  --muted-foreground: #94a3b8;
+  --border: #1f1f1f;
+  --input: #2b2b2b;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --accent: #0b1a33;
+  --accent-foreground: #93c5fd;
+  --destructive: #f87171;
+  --ring: #60a5fa;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --font-sans: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground antialiased; font-family: var(--font-sans); }
+}
+
+/* ---------- premium app styling ---------- */
+:root {
+  --brand-1: #2563eb;
+  --brand-2: #06b6d4;
+  --sidebar: #ffffff;
+  --sidebar-border: #e6ebf3;
+  --glow: rgba(37, 99, 235, 0.14);
+}
+.dark {
+  --sidebar: #050505;
+  --sidebar-border: #181818;
+  --glow: rgba(59, 130, 246, 0.18);
+}
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-brand-1: var(--brand-1);
+  --color-brand-2: var(--brand-2);
+}
+.brand-gradient { background-image: linear-gradient(135deg, var(--brand-1), var(--brand-2)); }
+.brand-text { background-image: linear-gradient(120deg, var(--brand-1), var(--brand-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.bg-grid {
+  background-image: linear-gradient(to right, color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 6%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+}
+.glass { background: color-mix(in srgb, var(--card) 72%, transparent); backdrop-filter: blur(14px); }
+@keyframes fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes float-y { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@keyframes pulse-glow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.anim-up { animation: fade-up .7s cubic-bezier(.2,.7,.2,1) both; }
+.anim-float { animation: float-y 6s ease-in-out infinite; }
+.anim-spin-slow { animation: spin-slow 60s linear infinite; transform-origin: center; transform-box: fill-box; }
+.anim-glow { animation: pulse-glow 3.5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .anim-up, .anim-float, .anim-spin-slow, .anim-glow { animation: none; } }
+html { scroll-behavior: smooth; }
+::selection { background: color-mix(in srgb, var(--brand-1) 25%, transparent); }
