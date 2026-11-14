@@ -17,8 +17,15 @@ async function pdfServerless(html: string): Promise<Uint8Array> {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
     await page.evaluate(() => document.fonts.ready);
-    const ok = await page.evaluate(() => document.fonts.check("12px Inter"));
-    if (!ok) throw new Error("Report font failed to load");
+    const diag = await page.evaluate(async () => {
+      const out: string[] = [];
+      for (const f of [...document.fonts]) {
+        try { await f.load(); } catch (e) { out.push(`${f.family} ${f.weight}: ${(e as Error).message}`); }
+      }
+      return { errors: out, faces: [...document.fonts].map((f) => `${f.weight}:${f.status}`).join(" "), body: getComputedStyle(document.body).fontFamily.slice(0, 60) };
+    });
+    if (!diag.faces) throw new Error(`No report fonts were injected [${diag.body}]`);
+    if (diag.errors.length) throw new Error(`Report font failed to load -> ${diag.errors.join(" | ")} [faces ${diag.faces}] [${diag.body}]`);
     return await page.pdf(OPTS);
   } finally {
     await browser.close().catch(() => {});
