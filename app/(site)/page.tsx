@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Check, Download, PlayCircle } from "lucide-react";
 import { FeatureArt, HeroScene, type FeatureKind } from "@/components/site/illustrations";
+import { Parallax } from "@/components/site/parallax";
 import { ThemeShowcase } from "@/components/site/theme-showcase";
 
 export const metadata = { title: "Monthly station reports, beautifully automated" };
@@ -45,7 +46,7 @@ export default function Home() {
           </div>
           <div className="anim-up relative" style={{ animationDelay: ".15s" }}>
             <div aria-hidden className="absolute -inset-6 rounded-[44px] bg-[radial-gradient(circle,var(--glow),transparent_70%)]" />
-            <HeroScene className="relative w-full drop-shadow-[0_30px_60px_rgba(15,42,107,.35)]" />
+            <Parallax><HeroScene className="relative w-full drop-shadow-[0_30px_60px_rgba(15,42,107,.35)]" /></Parallax>
           </div>
         </div>
       </section>

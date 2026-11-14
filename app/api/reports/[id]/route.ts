@@ -25,7 +25,7 @@ export async function PUT(req: Request, { params }: Ctx) {
       SELECT id, title, data FROM reports WHERE id = ${id}
       AND NOT EXISTS (SELECT 1 FROM report_revisions WHERE report_id = ${id} AND created_at > now() - interval '30 minutes')`;
     const rows = await sql`UPDATE reports SET
-        data = data || ${JSON.stringify(changes)}::text::jsonb,,
+        data = data || ${JSON.stringify(changes)}::text::jsonb,
         title = COALESCE(${b.title ?? null}, title),
         status = COALESCE(${b.status ?? null}, status),
         period = COALESCE(${typeof changes.period === "string" ? changes.period : null}, period),

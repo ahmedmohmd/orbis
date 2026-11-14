@@ -100,3 +100,11 @@
 @media (prefers-reduced-motion: reduce) { .anim-up, .anim-float, .anim-spin-slow, .anim-glow { animation: none; } }
 html { scroll-behavior: smooth; }
 ::selection { background: color-mix(in srgb, var(--brand-1) 25%, transparent); }
+
+/* parallax layers (see components/site/parallax.tsx): depth --d follows the scroll, --m reacts to the mouse */
+.px {
+  transform: translate3d(calc(var(--mx, 0) * var(--m, 0) * -16px), calc(var(--sy, 0) * var(--d, 0) * 90px + var(--my, 0) * var(--m, 0) * -10px), 0);
+  transition: transform .25s cubic-bezier(.2, .7, .2, 1);
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) { .px { transform: none; transition: none; } }

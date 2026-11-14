@@ -2,7 +2,10 @@
  * Hand-drawn SVG illustrations for the landing site and the sign-in pages.
  * They are self-contained (own sky / card backgrounds) so they look right in light and dark themes.
  */
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+
+/** Parallax layer vars: depth (scroll speed; negative = moves faster than the page) and mouse strength. */
+const d = (depth: number, mouse = depth) => ({ "--d": depth, "--m": mouse } as CSSProperties);
 
 const rays = (cx: number, cy: number, r1: number, r2: number, n: number, stroke: string, w = 2) =>
   Array.from({ length: n }, (_, i) => {
@@ -62,7 +65,8 @@ export function HeroScene({ className }: { className?: string }) {
         <filter id="ill-shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#061538" floodOpacity=".35" /></filter>
       </defs>
       <g clipPath="url(#ill-clip)">
-        <rect width="640" height="560" fill="url(#ill-sky)" />
+        <g className="px" style={d(0.6)}>
+        <rect x="-60" y="-140" width="760" height="760" fill="url(#ill-sky)" />
         {/* stars */}
         {[[60, 40], [130, 90], [210, 30], [300, 70], [520, 36], [580, 110], [90, 150]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={i % 2 ? 1.2 : 1.8} fill="#fff" opacity={0.55} className="anim-glow" />)}
         {/* sun */}
@@ -70,10 +74,16 @@ export function HeroScene({ className }: { className?: string }) {
         <g className="anim-spin-slow">{rays(448, 318, 74, 112, 24, "#fff3c9", 2)}</g>
         <circle cx="448" cy="318" r="56" fill="#fff6d6" />
         <circle cx="448" cy="318" r="42" fill="#fff" opacity=".9" />
+        </g>
         {/* hills */}
+        <g className="px" style={d(0.4)}>
         <path d="M-10 350 C 80 300 160 318 250 340 S 400 330 470 322 S 600 300 650 330 V 420 H -10 Z" fill="url(#ill-hill1)" />
+        </g>
+        <g className="px" style={d(0.18)}>
         <path d="M-10 388 C 100 350 210 372 320 380 S 520 360 650 386 V 470 H -10 Z" fill="url(#ill-hill2)" />
+        </g>
         {/* substation */}
+        <g className="px" style={d(0.28)}>
         <g transform="translate(52 330)">
           <rect x="0" y="12" width="64" height="34" rx="3" fill="#0e2c6b" /><rect x="8" y="22" width="12" height="24" fill="#ffd27a" opacity=".9" /><rect x="26" y="20" width="10" height="10" fill="#8ec5ff" opacity=".8" /><rect x="40" y="20" width="10" height="10" fill="#8ec5ff" opacity=".8" />
           <rect x="68" y="20" width="18" height="26" rx="2" fill="#16397f" /><path d="M72 26 h10 M72 32 h10 M72 38 h10" stroke="#7fb4ff" strokeWidth="1.4" />
@@ -81,6 +91,7 @@ export function HeroScene({ className }: { className?: string }) {
         <Pylon x={540} y={250} s={0.92} />
         <path d="M510 272 C 430 298 380 300 300 296 S 150 296 120 330" stroke="#0b2a5b" strokeWidth="1.4" fill="none" opacity=".75" />
         <path d="M518 298 C 440 318 370 318 300 314 S 170 316 130 340" stroke="#0b2a5b" strokeWidth="1.4" fill="none" opacity=".75" />
+        </g>
         {/* ground + panels */}
         <rect y="400" width="640" height="160" fill="url(#ill-ground)" />
         <PanelField y0={398} rows={5} w={640} h={160} />
@@ -88,35 +99,35 @@ export function HeroScene({ className }: { className?: string }) {
       </g>
 
       {/* floating widgets */}
-      <g transform="translate(28 36)"><g className="anim-float" filter="url(#ill-shadow)">
+      <g className="px" style={d(-0.35, 1)}><g transform="translate(28 36)"><g className="anim-float" filter="url(#ill-shadow)">
         <rect width="206" height="128" rx="18" fill="url(#ill-card)" />
         <text x="18" y="28" fontSize="10.5" fontWeight="700" fill="#64748b" letterSpacing="1.4" fontFamily="Inter, Segoe UI, sans-serif">ENERGY · OCT</text>
         <text x="18" y="54" fontSize="22" fontWeight="800" fill="#0b1b3a" fontFamily="Inter, Segoe UI, sans-serif">1,959 MWh</text>
         {[14, 24, 18, 32, 28, 40, 34, 44].map((h, i) => <rect key={i} x={18 + i * 22} y={116 - h} width="14" height={h} rx="4" fill="url(#ill-bar)" opacity={0.55 + i * 0.06} />)}
         <path d="M18 102 C 50 92 70 98 100 86 S 150 80 188 70" stroke="#f97316" strokeWidth="2.6" fill="none" strokeLinecap="round" />
         <circle cx="188" cy="70" r="4" fill="#fff" stroke="#f97316" strokeWidth="2.4" />
-      </g></g>
+      </g></g></g>
 
-      <g transform="translate(446 62)"><g className="anim-float" style={{ animationDelay: "-2s" }} filter="url(#ill-shadow)">
+      <g className="px" style={d(-0.6, 1.4)}><g transform="translate(446 62)"><g className="anim-float" style={{ animationDelay: "-2s" }} filter="url(#ill-shadow)">
         <rect width="150" height="150" rx="22" fill="url(#ill-card)" />
         <circle cx="75" cy="66" r="40" fill="none" stroke="#e2e8f0" strokeWidth="10" />
         <circle cx="75" cy="66" r="40" fill="none" stroke="url(#ill-orange)" strokeWidth="10" strokeLinecap="round" strokeDasharray="236 251" transform="rotate(-90 75 66)" />
         <text x="75" y="72" textAnchor="middle" fontSize="19" fontWeight="800" fill="#0b1b3a" fontFamily="Inter, Segoe UI, sans-serif">99.9%</text>
         <text x="75" y="132" textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#64748b" letterSpacing="1.2" fontFamily="Inter, Segoe UI, sans-serif">GRID UPTIME</text>
-      </g></g>
+      </g></g></g>
 
-      <g transform="translate(300 438)"><g className="anim-float" style={{ animationDelay: "-4s" }} filter="url(#ill-shadow)">
+      <g className="px" style={d(-0.2, .8)}><g transform="translate(300 438)"><g className="anim-float" style={{ animationDelay: "-4s" }} filter="url(#ill-shadow)">
         <rect width="172" height="52" rx="26" fill="#fff" />
         <rect x="8" y="8" width="36" height="36" rx="18" fill="url(#ill-orange)" />
         <path d="M26 17 v14 m-6 -5 l6 6 l6 -6" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
         <text x="56" y="25" fontSize="12.5" fontWeight="800" fill="#0b1b3a" fontFamily="Inter, Segoe UI, sans-serif">Export report</text>
         <text x="56" y="40" fontSize="10" fontWeight="600" fill="#64748b" fontFamily="Inter, Segoe UI, sans-serif">PDF · Word</text>
-      </g></g>
+      </g></g></g>
 
-      <g transform="translate(40 232)"><g className="anim-float" style={{ animationDelay: "-1s" }} filter="url(#ill-shadow)">
+      <g className="px" style={d(-0.45, 1.2)}><g transform="translate(40 232)"><g className="anim-float" style={{ animationDelay: "-1s" }} filter="url(#ill-shadow)">
         <rect width="118" height="40" rx="20" fill="#0d9488" />
         <text x="59" y="25.5" textAnchor="middle" fontSize="12.5" fontWeight="800" fill="#fff" fontFamily="Inter, Segoe UI, sans-serif">Annex 3 ✓</text>
-      </g></g>
+      </g></g></g>
     </svg>
   );
 }
