@@ -91,9 +91,9 @@ Templates → *Add section*: tick what it should contain (notes, key numbers, ta
 - Existing templates keep working: new options default to the previous look.
 
 ## Deploying to Vercel
-PDF export runs headless Chromium. On Vercel the app automatically uses `@sparticuz/chromium` (a serverless build) with `playwright-core`; locally it uses normal Playwright.
+PDF export runs headless Chromium. On Vercel the app automatically uses `@sparticuz/chromium` (a serverless build) with `puppeteer-core`; locally it uses normal Playwright.
 
-1. `npm install` (adds `@sparticuz/chromium`, `playwright-core`), commit, push, redeploy.
+1. `npm install` (adds `@sparticuz/chromium`, `puppeteer-core`), commit, push, redeploy.
 2. Set `DATABASE_URL` to a hosted Postgres (Neon, Supabase, Vercel Postgres) in Project -> Settings -> Environment Variables.
 3. The PDF function needs memory: Project -> Settings -> Functions -> Memory 2048 MB or more; `maxDuration` is 60 s (Hobby plan max is 60 s).
 4. Inter fonts are embedded from `fonts/`, so the PDF looks the same as locally.

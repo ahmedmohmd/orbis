@@ -2,11 +2,10 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   // native / heavy packages must not be bundled
-  serverExternalPackages: ["playwright", "playwright-core", "@sparticuz/chromium", "sharp", "postgres"],
+  serverExternalPackages: ["playwright", "puppeteer-core", "@sparticuz/chromium", "sharp", "postgres"],
   // make sure Vercel ships the Chromium binary and the report fonts with the PDF function
   outputFileTracingIncludes: {
     "/api/reports/[id]/pdf": [
-      "./node_modules/playwright-core/**",
       "./node_modules/@sparticuz/chromium/**",
       "./fonts/**",
     ],

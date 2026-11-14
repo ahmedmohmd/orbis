@@ -1,5 +1,5 @@
 import { guard } from "@/lib/auth";
-import { getBrowser } from "@/lib/browser";
+import { renderPdf } from "@/lib/browser";
 import { fontCss } from "@/lib/fonts";
 import { fileResponse } from "@/lib/stream";
 import { getReportWithTemplate } from "@/lib/data";
@@ -20,11 +20,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const html0 = renderReportHtml(row.template.schema, await inlineAssets(row.report.data), { title: row.report.title, period: row.report.period });
   const html = html0.replace("<style>", `<style>${fontCss()}</style><style>`);
   try {
-    const page = await (await getBrowser()).newPage();
-    await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
-    await page.evaluate(() => document.fonts.ready);
-    const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true });
-    await page.close();
+    const pdf = await renderPdf(html);
     // attach every original photo to the PDF itself (paperclip / Attachments panel of any PDF reader)
     let out: Uint8Array = pdf;
     const files = await photoFiles(row.template.schema, row.report.data);
