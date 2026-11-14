@@ -17,6 +17,8 @@ async function pdfServerless(html: string): Promise<Uint8Array> {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load", timeout: 45_000 });
     await page.evaluate(() => document.fonts.ready);
+    const ok = await page.evaluate(() => document.fonts.check("12px Inter"));
+    if (!ok) throw new Error("Report font failed to load");
     return await page.pdf(OPTS);
   } finally {
     await browser.close().catch(() => {});
