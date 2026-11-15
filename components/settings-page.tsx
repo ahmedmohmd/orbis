@@ -217,7 +217,6 @@ export function SettingsPage({ templates, templateId, initialName, initialSchema
           {tab === "export" && (
             <Section title="Photos & export" desc="What HSE and your manager receive.">
               <Row title="Attach original photos inside the PDF" hint="Induction documents, persons, national IDs, PTWs… are embedded at full quality. Open the PDF reader’s Attachments panel to save them."><Toggle k="attachPhotos" /></Row>
-              <Row title="Show file names and the attachment note" hint="Prints the download file name under each photo and a short note on pages with photos."><Toggle k="photoNames" /></Row>
               <Row title="All photos as one ZIP" hint="Always available from the report page (button “Photos ZIP”), grouped in folders per section."><span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground"><ImageIcon className="size-4" />Report page</span></Row>
               <Row title="Word export" hint="Uses the same colours, paper size, header, footer and page numbers. Photos are embedded in the Word file."><span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground"><FileText className="size-4" />Follows these settings</span></Row>
             </Section>

@@ -1,5 +1,7 @@
 "use client";
-import { Plus, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { FileSpreadsheet, Plus, Trash2, X } from "lucide-react";
+import { TableImportDialog } from "@/components/table-import";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -190,7 +192,17 @@ export function BlockEditor({ block: b, schema, onChange, onDelete }: { block: B
       {b.type === "chart" && <ChartEditor block={b} tables={tables} schema={schema} set={set} />}
 
       {b.type === "table" && (
-        <div className="flex items-center gap-2"><Switch checked={!!b.compact} onCheckedChange={(v) => set({ compact: v })} /><span className="text-sm">Compact table (smaller text – good for wide tables)</span></div>
+        <div className="grid gap-2 rounded-lg border p-3">
+          <Label>Table look</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="flex items-center gap-2"><Switch checked={!!b.compact} onCheckedChange={(v) => set({ compact: v })} /><span className="text-sm">Compact (smaller text)</span></div>
+            <div className="flex items-center gap-2"><Switch checked={b.zebra !== false} onCheckedChange={(v) => set({ zebra: v })} /><span className="text-sm">Striped rows</span></div>
+            <div className="flex items-center gap-2"><Switch checked={!!b.grid} onCheckedChange={(v) => set({ grid: v })} /><span className="text-sm">Lines between columns (spreadsheet look)</span></div>
+            <div className="flex items-center gap-2"><Switch checked={!!b.hideHeader} onCheckedChange={(v) => set({ hideHeader: v })} /><span className="text-sm">Hide the column header row</span></div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">In the report you can mark any row as a <b>Group title</b>, <b>Sub-header</b> or <b>Total</b>. Rows below are what every new report starts with.</p>
+          <DefaultRows block={b} set={set} />
+        </div>
       )}
 
       <div className="flex items-center justify-between border-t pt-3">
@@ -213,12 +225,37 @@ function KeyHelper({ schema, exclude }: { schema: TemplateSchema; exclude: strin
   );
 }
 
+function DefaultRows({ block: b, set }: { block: Block; set: (p: Partial<Block>) => void }) {
+  const n = b.defaultRows?.length ?? 0;
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      {n > 0 ? <>Starting rows: <b className="text-foreground">{n}</b></> : "No starting rows (reports begin with an empty table)."}
+      {n > 0 && <Button size="xs" variant="ghost" className="text-destructive" onClick={() => set({ defaultRows: undefined })}>Remove</Button>}
+    </div>
+  );
+}
+
 function ColumnsEditor({ block: b, set }: { block: Block; set: (p: Partial<Block>) => void }) {
   const cols = b.columns ?? [];
+  const [imp, setImp] = useState(false);
   const upd = (i: number, p: Partial<Column>) => set({ columns: cols.map((c, j) => (j === i ? { ...c, ...p } : c)) });
   return (
     <div className="grid gap-2">
-      <Label>Table columns</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label>Table columns</Label>
+        <Button size="sm" variant="outline" onClick={() => setImp(true)}><FileSpreadsheet className="size-3.5" />Create from Excel sheet</Button>
+      </div>
+      <TableImportDialog
+        open={imp}
+        onOpenChange={setImp}
+        title="Create the table from an Excel sheet"
+        description="Choose the sheet (or paste its cells). The columns, widths, alignment, group titles, sub-headers and total rows are copied. You can then adjust everything."
+        action="Use this as the table template"
+        onImport={(t) => {
+          const keep = confirm("Also keep the sheet's rows (labels and values) as the starting rows of every new report?\n\nOK = yes, Cancel = only the columns");
+          set({ columns: t.columns, hideHeader: t.hideHeader, grid: true, compact: t.columns.length > 4, defaultRows: keep ? t.rows : undefined });
+        }}
+      />
       {cols.map((c, i) => (
         <div key={i} className="grid gap-2 rounded-lg border p-2">
           <div className="flex gap-2">
@@ -230,10 +267,16 @@ function ColumnsEditor({ block: b, set }: { block: Block; set: (p: Partial<Block
             <Button size="xs" variant="ghost" disabled={i === 0} onClick={() => { const n = [...cols]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; set({ columns: n }); }}>↑</Button>
             <Button size="xs" variant="ghost" onClick={() => set({ columns: cols.filter((_, j) => j !== i) })}><X className="size-4 text-destructive" /></Button>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            key: <Input className="h-7 max-w-40 font-mono text-xs" value={c.key} onChange={(e) => upd(i, { key: slug(e.target.value) })} />
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            key: <Input className="h-7 max-w-36 font-mono text-xs" value={c.key} onChange={(e) => upd(i, { key: slug(e.target.value) })} />
+            align:
+            <Select className="h-7 w-24 text-xs" value={c.align ?? ""} onChange={(e) => upd(i, { align: (e.target.value || undefined) as Column["align"] })}>
+              <option value="">Auto</option><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+            </Select>
+            {c.type === "number" && <>decimals: <Input className="h-7 w-16 text-xs" type="number" min={0} max={6} value={c.decimals ?? ""} placeholder="auto" onChange={(e) => upd(i, { decimals: e.target.value === "" ? undefined : Number(e.target.value) })} /></>}
+            <label className="flex items-center gap-1"><Switch checked={!!c.bold} onCheckedChange={(v) => upd(i, { bold: v })} />bold</label>
             {(c.type === "select" || c.type === "status") && (
-              <Input className="h-7 text-xs" placeholder="Options, comma separated" value={(c.options ?? []).join(", ")} onChange={(e) => upd(i, { options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
+              <Input className="h-7 min-w-40 flex-1 text-xs" placeholder="Options, comma separated" value={(c.options ?? []).join(", ")} onChange={(e) => upd(i, { options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />
             )}
           </div>
         </div>

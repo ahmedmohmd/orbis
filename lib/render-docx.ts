@@ -29,6 +29,7 @@ import { ringGauge } from "./charts";
 import { blockNumber, formatNumber, safeEval, toNumber } from "./formula";
 import { groupOf, hasPhotos, imagesOf, isVisible, recordsTable, resolveRecords, scalarText, type Entry } from "./records";
 import { defaultDisplay, defaultWidth, displayValue, fmtDate, statusTone, type RenderMeta } from "./render-html";
+import { alignOf, kindOf, tableRows } from "./tables";
 import type { Block, Column, ImageItem, RecordField, ReportData, Row, TemplateSchema } from "./types";
 
 const CONTENT_W = 9906; // A4 width (11906) minus 2 × 1000 twips margins
@@ -51,10 +52,10 @@ const run = (text: string, o: { size?: number; bold?: boolean; color?: string; i
 const p = (children: ParagraphChild[] | string, o: ConstructorParameters<typeof Paragraph>[0] = {}) =>
   new Paragraph({ ...(o as object), children: typeof children === "string" ? [run(children)] : children } as ConstructorParameters<typeof Paragraph>[0]);
 
-const multiline = (text: string, o: Parameters<typeof run>[1] = {}) =>
+const multiline = (text: string, o: Parameters<typeof run>[1] = {}, alignment?: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
   String(text)
     .split("\n")
-    .map((l) => p([run(l, o)], { spacing: { after: 40 } }));
+    .map((l) => p([run(l, o)], { spacing: { after: 40 }, ...(alignment ? { alignment } : {}) }));
 
 async function svgPng(svg: string, maxW = 620) {
   const w = +(svg.match(/width="(\d+(?:\.\d+)?)"/)?.[1] ?? 640);
@@ -222,8 +223,8 @@ export async function renderReportDocx(t0: TemplateSchema, data0: ReportData, me
 
   async function renderTable(b: Block, override?: { cols: Column[]; rows: Row[] }) {
     const cols = override?.cols ?? b.columns ?? [];
-    const rows = (override?.rows ?? (Array.isArray(data[b.key]) ? (data[b.key] as Row[]) : [])).filter((r) => Object.values(r).some((v) => v !== "" && v != null));
-    if (!override) out.push(p([run(b.label, { size: 23, bold: true }), run(rows.length ? `   ${rows.length}` : "", { size: 17, bold: true, color: A })], { spacing: { before: 120, after: 80 }, keepNext: true }));
+    const rows = override?.rows.filter((r) => Object.values(r).some((v) => v !== "" && v != null)) ?? tableRows(b, data);
+    if (!override) out.push(p([run(b.label, { size: 23, bold: true }), run(rows.length ? `   ${rows.filter((r) => !kindOf(r)).length}` : "", { size: 17, bold: true, color: A })], { spacing: { before: 120, after: 80 }, keepNext: true }));
     if (!rows.length) {
       out.push(p([run("No records this period", { size: 18, italics: true, color: "94A3B8" })], { spacing: { after: 140 } }));
       return;
@@ -231,33 +232,40 @@ export async function renderReportDocx(t0: TemplateSchema, data0: ReportData, me
     const total = cols.reduce((a, c) => a + (c.width ?? 1), 0) || 1;
     const widths = cols.map((c) => Math.floor(((c.width ?? 1) / total) * CONTENT_W));
     const fs = b.compact ? 15 : 17;
+    const algn = (c: Column) => (alignOf(c) === "right" ? AlignmentType.RIGHT : alignOf(c) === "center" ? AlignmentType.CENTER : AlignmentType.LEFT);
     const head = new TableRow({
       tableHeader: true,
       cantSplit: true,
-      children: cols.map((c, i) => cell([p([run(c.label.toUpperCase(), { size: 14, bold: true, color: "FFFFFF" })], { alignment: c.type === "number" ? AlignmentType.RIGHT : AlignmentType.LEFT })], widths[i], { fill: A, margin: 70 })),
+      children: cols.map((c, i) => cell([p([run(c.label.toUpperCase(), { size: 14, bold: true, color: "FFFFFF" })], { alignment: algn(c) })], widths[i], { fill: A, margin: 70 })),
     });
-    const body = rows.map(
-      (r, ri) =>
-        new TableRow({
-          cantSplit: true,
-          children: cols.map((c, i) => {
-            const v = r[c.key];
-            const s = v == null ? "" : String(v);
-            const borders = { ...NO_BORDERS, bottom: line() };
-            const fill = ri % 2 ? "F8FAFC" : undefined;
-            if (c.type === "status") {
-              const tn = TONE[statusTone(s)];
-              return cell(s ? [p([run(s, { size: fs, bold: true, color: tn.fg })])] : [], widths[i], { fill: s ? tn.bg : fill, borders: { ...borders, left: line("FFFFFF", 12), right: line("FFFFFF", 12) }, margin: 60 });
-            }
-            if (c.type === "number")
-              return cell([p([run(s === "" ? "" : /^-?[\d,.]+$/.test(s) ? formatNumber(toNumber(v)) : s, { size: fs })], { alignment: AlignmentType.RIGHT })], widths[i], { fill, borders, margin: 60 });
-            return cell(multiline(c.type === "date" ? fmtDate(s) : s, { size: fs }), widths[i], { fill, borders, margin: 60 });
-          }),
+    let zi = 0;
+    const body = rows.map((r) => {
+      const k = kindOf(r);
+      if (k === "group") {
+        zi = 0;
+        return new TableRow({ cantSplit: true, children: [cell([p([run(String(r[cols[0]?.key] ?? ""), { size: fs + 1, bold: true, color: "FFFFFF" })], { alignment: AlignmentType.CENTER, keepNext: true })], CONTENT_W, { fill: A, margin: 80, span: cols.length })] });
+      }
+      const stripe = !k && b.zebra !== false && zi++ % 2 ? "F8FAFC" : undefined;
+      return new TableRow({
+        cantSplit: true,
+        children: cols.map((c, i) => {
+          const v = r[c.key];
+          const s = v == null ? "" : String(v);
+          const borders = { ...NO_BORDERS, bottom: line() };
+          const fill = k === "head" ? "DCEAF7" : k === "total" ? TINT : stripe;
+          const bold = !!k || !!c.bold;
+          if (c.type === "status" && !k) {
+            const tn = TONE[statusTone(s)];
+            return cell(s ? [p([run(s, { size: fs, bold: true, color: tn.fg })])] : [], widths[i], { fill: s ? tn.bg : fill, borders: { ...borders, left: line("FFFFFF", 12), right: line("FFFFFF", 12) }, margin: 60 });
+          }
+          if (c.type === "number")
+            return cell([p([run(s === "" ? "" : typeof v === "number" || /^-?[\d,.]+$/.test(s) ? formatNumber(toNumber(v), c.decimals) : s, { size: fs, bold })], { alignment: algn(c) })], widths[i], { fill, borders, margin: 60 });
+          return cell(multiline(c.type === "date" ? fmtDate(s) : s, { size: fs, bold }, algn(c)), widths[i], { fill, borders, margin: 60 });
         }),
-    );
-    out.push(table([head, ...body], widths), gap(140));
+      });
+    });
+    out.push(table([...(b.hideHeader ? [] : [head]), ...body], widths), gap(140));
   }
-
 
   /* ---------------------------- entries log ---------------------------- */
   async function loadPhoto(src: string, maxW: number, maxH: number) {

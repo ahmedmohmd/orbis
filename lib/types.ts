@@ -48,7 +48,16 @@ export interface Column {
   options?: string[];
   /** relative width hint (1 = default) */
   width?: number;
+  /** text alignment in the exported table (numbers default to right) */
+  align?: "left" | "center" | "right";
+  /** number columns: fixed number of decimals */
+  decimals?: number;
+  /** print the column in bold */
+  bold?: boolean;
 }
+
+/** Special table rows: a coloured group title, a repeated sub-header, or a highlighted total. Stored in the row as `__k`. */
+export type RowKind = "group" | "head" | "total";
 
 /** A field inside an "Entries log" entry (or inside a nested list of an entry). */
 export type RecordFieldType = "text" | "textarea" | "number" | "date" | "select" | "boolean" | "image" | "group";
@@ -115,6 +124,14 @@ export interface Block {
   display?: BlockDisplay;
   options?: string[];
   columns?: Column[];
+  /** table: zebra stripes (default on) */
+  zebra?: boolean;
+  /** table: draw vertical lines between columns too, like a spreadsheet */
+  grid?: boolean;
+  /** table: do not print the column header row (use when the table starts with its own group + sub-header rows) */
+  hideHeader?: boolean;
+  /** table: rows every new report starts with (e.g. an imported Excel sheet with its fixed labels) */
+  defaultRows?: Row[];
   /** records: the fields of one entry */
   fields?: RecordField[];
   /** records: noun for the Add button, e.g. "induction" */

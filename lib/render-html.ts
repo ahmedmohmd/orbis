@@ -3,8 +3,8 @@ import { chartSvg } from "./chart-block";
 import { esc, ringGauge } from "./charts";
 import { blockNumber, formatNumber, safeEval, toNumber } from "./formula";
 import { resolveTheme, type ResolvedTheme } from "./themes";
-import { collectPhotos, fileNameOf, mimeOfSrc } from "./photos";
 import { groupOf, hasPhotos, imagesOf, isVisible, recordsTable, resolveRecords, scalarText, type Entry } from "./records";
+import { alignOf, kindOf, tableRows } from "./tables";
 import type { Block, BlockWidth, ImageItem, RecordField, ReportData, Row, TemplateSchema } from "./types";
 
 /**
@@ -69,18 +69,13 @@ export function displayValue(b: Block, t: TemplateSchema, data: ReportData): str
   }
 }
 
-const rowsOf = (v: unknown): Row[] =>
-  (Array.isArray(v) ? (v as Row[]) : []).filter((r) => r && Object.values(r).some((x) => x !== "" && x != null));
-
 /* ------------------------------ entries log ------------------------------ */
 
-let photoNames = new Map<string, string>(); // image src → export file name (set per render)
-const fname = (src: string) => photoNames.get(src);
 
 function figures(f: RecordField, v: unknown, cls = ""): string {
   const imgs = imagesOf(v);
   if (!imgs.length) return `<div class="ph-missing"><span>${esc(f.label)}</span>Not attached</div>`;
-  return `<div class="figs ${cls}">${imgs.map((i) => `<figure><img src="${esc(i.src)}" alt=""><figcaption>${esc(f.label)}${i.caption && f.maxImages !== 1 ? ` · ${esc(i.caption)}` : ""}${fname(i.src) ? `<span class="fn">⬇ ${esc(fname(i.src)!)}</span>` : ""}</figcaption></figure>`).join("")}</div>`;
+  return `<div class="figs ${cls}">${imgs.map((i) => `<figure><img src="${esc(i.src)}" alt=""><figcaption>${esc(f.label)}${i.caption && f.maxImages !== 1 ? ` · ${esc(i.caption)}` : ""}</figcaption></figure>`).join("")}</div>`;
 }
 
 function entryBody(fields: RecordField[], e: Entry, depth: number): string {
@@ -126,8 +121,6 @@ function recordsHtml(b: Block, t: TemplateSchema, data: ReportData): string {
   const head = `<div class="tbl-title">${esc(b.label)}${rows.length ? `<span class="count">${rows.length}</span>` : ""}</div>`;
   if (!rows.length) return head + `<div class="empty">No entries this period</div>`;
   let out = head;
-  if (hasPhotos(fields) && (view === "cards" || view === "both") && photoNames.size && t.settings?.photoNames !== false)
-    out += `<div class="dl-note"><b>📎 Original photos are attached to this PDF.</b> Open the <i>Attachments</i> panel (paperclip) of your PDF reader and save them – the file name is printed under every photo.</div>`;
   if (view === "table" || view === "both") {
     const rt = recordsTable(fields, rows);
     out += tableHtml(rt.columns.map((c) => ({ key: c.key, label: c.label, type: "text" as const, width: c.key === "__n" ? 0.35 : 1 })), rt.rows, true);
@@ -145,25 +138,34 @@ function recordsHtml(b: Block, t: TemplateSchema, data: ReportData): string {
   return out;
 }
 
-function tableHtml(cols: { key: string; label: string; type: string; width?: number }[], rows: Row[], compact: boolean): string {
+interface TableOpts { zebra?: boolean; grid?: boolean; hideHeader?: boolean }
+
+function tableHtml(cols: { key: string; label: string; type: string; width?: number; align?: string; decimals?: number; bold?: boolean }[], rows: Row[], compact: boolean, o: TableOpts = {}): string {
   const total = cols.reduce((a, c) => a + (c.width ?? 1), 0) || 1;
   const colgroup = `<colgroup>${cols.map((c) => `<col style="width:${(((c.width ?? 1) / total) * 100).toFixed(1)}%">`).join("")}</colgroup>`;
-  const thead = `<thead><tr>${cols.map((c) => `<th class="${c.type === "number" ? "r" : ""}">${esc(c.label)}</th>`).join("")}</tr></thead>`;
+  const al = (c: (typeof cols)[number]) => c.align ?? (c.type === "number" ? "right" : "left");
+  const thead = `<thead><tr>${cols.map((c) => `<th class="${al(c) === "right" ? "r" : al(c) === "center" ? "c" : ""}">${esc(c.label)}</th>`).join("")}</tr></thead>`;
+  let zi = 0;
   const tbody = rows
-    .map(
-      (r) =>
-        `<tr>${cols
-          .map((c) => {
-            const v = r[c.key];
-            const s = v == null ? "" : String(v);
-            if (c.type === "status") return `<td>${s ? `<span class="pill ${statusTone(s)}">${esc(s)}</span>` : ""}</td>`;
-            if (c.type === "number") return `<td class="r">${s === "" ? "" : esc(typeof v === "number" || /^-?[\d,.]+$/.test(s) ? formatNumber(toNumber(v)) : s)}</td>`;
-            return `<td>${esc(c.type === "date" ? fmtDate(s) : s)}</td>`;
-          })
-          .join("")}</tr>`,
-    )
+    .map((r) => {
+      const k = kindOf(r);
+      if (k === "group") { zi = 0; return `<tr class="g"><td colspan="${cols.length}">${esc(String(r[cols[0]?.key] ?? ""))}</td></tr>`; }
+      const cls = k === "head" ? "hd" : k === "total" ? "tot" : o.zebra !== false && zi++ % 2 ? "z" : "";
+      return `<tr class="${cls}">${cols
+        .map((c) => {
+          const v = r[c.key];
+          const s = v == null ? "" : String(v);
+          const a = al(c);
+          const ac = a === "right" ? "r" : a === "center" ? "c" : "";
+          const b = c.bold ? " b" : "";
+          if (c.type === "status" && !k) return `<td class="${ac}">${s ? `<span class="pill ${statusTone(s)}">${esc(s)}</span>` : ""}</td>`;
+          if (c.type === "number") return `<td class="${ac || "r"}${b}">${s === "" ? "" : esc(typeof v === "number" || /^-?[\d,.]+$/.test(s) ? formatNumber(toNumber(v), c.decimals) : s)}</td>`;
+          return `<td class="${ac}${b}">${esc(c.type === "date" ? fmtDate(s) : s)}</td>`;
+        })
+        .join("")}</tr>`;
+    })
     .join("");
-  return `<table class="tbl ${compact ? "compact" : ""}">${colgroup}${thead}<tbody>${tbody}</tbody></table>`;
+  return `<table class="tbl ${compact ? "compact" : ""} ${o.grid ? "vlines" : ""} ${o.hideHeader ? "nohead" : ""}">${colgroup}${thead}<tbody>${tbody}</tbody></table>`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -223,10 +225,11 @@ function renderBlock(b: Block, t: TemplateSchema, data: ReportData): string {
 
     case "table": {
       const cols = b.columns ?? [];
-      const rows = rowsOf(raw);
-      const head = `<div class="tbl-title">${esc(b.label)}${rows.length ? `<span class="count">${rows.length}</span>` : ""}</div>`;
+      const rows = tableRows(b, data);
+      const n = rows.filter((r) => !kindOf(r)).length;
+      const head = `<div class="tbl-title">${esc(b.label)}${n ? `<span class="count">${n}</span>` : ""}</div>`;
       if (!rows.length) return wrap(head + `<div class="empty">No records this period</div>`);
-      return wrap(head + tableHtml(cols, rows, !!b.compact), "tblwrap");
+      return wrap(head + tableHtml(cols, rows, !!b.compact, { zebra: b.zebra, grid: b.grid, hideHeader: b.hideHeader }), "tblwrap");
     }
 
     case "records": {
@@ -261,12 +264,8 @@ function renderBlock(b: Block, t: TemplateSchema, data: ReportData): string {
       );
     }
 
-    case "annex": {
-      // printed at the end (default): leave a small automatic reference where it is defined
-      const info = annexList(t).find((a) => a.block.id === b.id);
-      if (!info || info.placement === "here") return "";
-      return `<a class="annex-ref" style="grid-column: span 12" href="#annex-${info.number}"><span class="ar-ico">A${info.number}</span><span class="ar-t"><b>Annex ${info.number} · ${esc(b.label)}</b></span><span class="ar-go">at the end of the report ›</span></a>`;
-    }
+    case "annex":
+      return ""; // annexes are listed on the banner chips and on the annex index page
   }
   return "";
 }
@@ -308,7 +307,6 @@ const cssString = (s: string) => s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').r
 
 export function renderReportHtml(t0: TemplateSchema, data0: ReportData, meta: RenderMeta): string {
   const { t, data } = resolveTokens(t0, data0); // {{annex:key}} → "Annex 3", {{field}} → value
-  photoNames = t0.settings?.photoNames === false ? new Map() : new Map(collectPhotos(t0, data0).map((p) => [p.src, fileNameOf(p, mimeOfSrc(p.src))]));
   const { brand } = t;
   const sections = t.sections;
   const annexes = annexList(t);
@@ -365,14 +363,22 @@ export function renderReportHtml(t0: TemplateSchema, data0: ReportData, meta: Re
         })
         .join("")}
     </div>
-    ${annexes.length ? `<div class="toc-annex-h">Annexes</div><div class="toc-list two">${annexes.map((a) => `<a class="toc-item annex" href="#annex-${a.number}"><span class="num a">A${a.number}</span><span class="tt"><b>${esc(a.block.label)}</b><em>Section ${pad2(a.sectionIndex + 1)} · ${esc(a.section.title)}</em></span></a>`).join("")}</div>` : ""}
   </section>`;
+
+  /* ---------- annex index (its own page, never split) ---------- */
+  const annexIndex = annexes.length
+    ? `<section class="annex-index">
+    ${banner("annex", "Annexes", "A", "Annexes", `${annexes.length} supporting ${annexes.length === 1 ? "document" : "documents"} attached after the last section`, [], "ai")}
+    <div class="ai-list">${annexes
+      .map((a) => `<a class="ai-item" href="#annex-${a.number}"><span class="num a">A${a.number}</span><span class="tt"><b>${esc(a.block.label)}</b><em>${a.block.description ? esc(a.block.description) + " · " : ""}Section ${pad2(a.sectionIndex + 1)} · ${esc(a.section.title)}</em></span></a>`)
+      .join("")}</div></section>`
+    : "";
 
   /* ---------- at a glance ---------- */
   const glance = hl.length
     ? `<section class="glance-page" id="glance">
     ${banner("section", "At a glance", "★", "The month in numbers", `${meta.title}${period ? " · " + period : ""}`, [], "gl")}
-    <div class="tiles t${hl.length <= 4 ? 2 : 3}">
+    <div class="tiles t${hl.length <= 6 ? 2 : 3}">
       ${hl
         .map((h, i) => {
           const v = safeEval(h.value, t, data);
@@ -416,7 +422,7 @@ export function renderReportHtml(t0: TemplateSchema, data0: ReportData, meta: Re
 <html lang="en"><head><meta charset="utf-8"><title>${esc(meta.title)}${period ? " — " + esc(period) : ""}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>${css(resolveTheme(brand), { paper: st.paper === "Letter" ? "Letter" : "A4", pageNumbers: st.showPageNumbers !== false }, `${brand.companyName}${brand.footer ? " · " + brand.footer : ""}`, headerText, brand.companyName)}</style></head>
-<body><main class="doc">${cover}${st.showToc === false ? "" : toc}${st.showGlance === false ? "" : glance}${body}${endAnnexes}</main></body></html>`;
+<body><main class="doc">${cover}${st.showToc === false ? "" : toc}${st.showToc === false ? "" : annexIndex}${st.showGlance === false ? "" : glance}${body}${endAnnexes}</main></body></html>`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -425,6 +431,7 @@ function css(th: ResolvedTheme, o: { paper: string; pageNumbers: boolean }, foot
   const { accent, accent2, deep, mid } = th;
   return `
 :root{--accent:${accent};--accent2:${accent2};--ink:#0b1b3a;--text:#16233f;--muted:#64748b;--line:#e3e9f2;--soft:#f6f8fc;--tint:color-mix(in srgb,var(--accent) 7%,#fff);--navy:${deep};--mid:${mid};--shadow:none;margin:0;padding:0}
+html,body{margin:0;padding:0}
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:Inter,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--text);font-size:12.5px;line-height:1.5;background:#fff;font-feature-settings:"tnum" 1,"cv11" 1}
 @page{size:${o.paper};margin:21mm 14mm 19mm 14mm;
@@ -439,7 +446,7 @@ body{font-family:Inter,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;co
   background:radial-gradient(900px 640px at 88% 6%,color-mix(in srgb,var(--accent2) 42%,transparent),transparent 62%),
   linear-gradient(165deg,${deep} 0%,${mid} 50%,color-mix(in srgb,var(--accent) 72%,${mid}) 100%)}
 .cover-art{position:absolute;inset:0;width:100%;height:100%}
-.cover-in{position:relative;height:100%;padding:22mm 18mm 20mm;display:flex;flex-direction:column;justify-content:space-between}
+.cover-in{position:relative;box-sizing:border-box;height:100%;padding:22mm 18mm 20mm;display:flex;flex-direction:column;justify-content:space-between}
 .cover-top{display:flex;align-items:center;gap:14px}
 .logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-weight:800;font-size:18px;letter-spacing:.5px;box-shadow:none}
 .company{font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:13px}
@@ -466,7 +473,11 @@ body{font-family:Inter,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;co
 .toc-item em{font-style:normal;color:var(--muted);font-size:10px;margin-top:1px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .toc-item em.ax{color:#0f766e;font-weight:700}
 .toc-item.glance{background:linear-gradient(90deg,var(--tint),#fff)}
-.toc-annex-h{margin:16px 0 8px;font-size:11px;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:#0f766e}
+.annex-index{break-before:page;break-after:avoid}
+.ai-list{display:grid;gap:10px}
+.ai-item{display:flex;gap:16px;align-items:center;text-decoration:none;color:inherit;border:1px solid var(--line);border-left:5px solid #14b8a6;border-radius:14px;padding:12px 16px;background:linear-gradient(90deg,#f0fdfa,#fff 55%);break-inside:avoid}
+.ai-item .num{width:42px;height:42px;border-radius:12px;font-size:14px}
+.ai-item .tt{display:flex;flex-direction:column;min-width:0}.ai-item b{font-size:15px;color:#134e4a}.ai-item em{font-style:normal;color:var(--muted);font-size:11px;margin-top:2px}
 .num{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:11px;color:#fff;font-weight:800;font-size:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:none}
 .num.a{background:linear-gradient(135deg,#0f766e,#14b8a6);font-size:12.5px}
 .num.star{background:linear-gradient(135deg,#f59e0b,#fbbf24);font-size:16px}
@@ -474,6 +485,7 @@ body{font-family:Inter,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;co
 
 /* ---------- banners (section / annex / glance) ---------- */
 .glance-page,section.sec,section.annex{break-before:page}
+.glance-page{break-after:avoid}
 .banner{position:relative;overflow:hidden;border-radius:20px;color:#fff;padding:20px 26px 18px;margin-bottom:16px;min-height:36mm;
   background:radial-gradient(520px 260px at 100% 0%,color-mix(in srgb,var(--accent2) 55%,transparent),transparent 70%),linear-gradient(120deg,var(--navy) 0%,var(--mid) 55%,color-mix(in srgb,var(--accent) 78%,var(--mid)) 100%);
   box-shadow:none}
@@ -521,7 +533,13 @@ body{font-family:Inter,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;co
 .tbl thead{display:table-header-group}
 .tbl th{background:linear-gradient(100deg,var(--navy),var(--mid) 60%,color-mix(in srgb,var(--accent) 85%,var(--mid)));color:#fff;text-align:left;font-weight:700;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:9px 10px}
 .tbl td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere;white-space:pre-line}
-.tbl tbody tr:nth-child(even) td{background:var(--soft)}
+.tbl tr.z td{background:var(--soft)}
+.tbl tr.g td{background:linear-gradient(100deg,var(--navy),var(--mid) 60%,color-mix(in srgb,var(--accent) 85%,var(--mid)));color:#fff;font-weight:800;font-size:11.5px;letter-spacing:.02em;padding:9px 12px;border-top:0;text-align:center}
+.tbl tr.hd td{background:color-mix(in srgb,var(--accent) 13%,#fff);color:var(--ink);font-weight:800}
+.tbl tr.tot td{background:var(--tint);color:var(--ink);font-weight:800}
+.tbl .c{text-align:center}.tbl td.b{font-weight:800}
+.tbl.nohead thead th{padding:0;height:0;line-height:0;font-size:0;border:0;background:none;color:transparent}
+.tbl.vlines td+td,.tbl.vlines th+th{border-left:1px solid var(--line)}
 .tbl tr{break-inside:avoid}
 .tbl .r{text-align:right;font-variant-numeric:tabular-nums}
 .tbl.compact{font-size:9.5px}.tbl.compact td{padding:5px 8px}.tbl.compact th{padding:7px 8px}
@@ -534,14 +552,14 @@ body{font-family:Inter,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;co
 .chart.center{display:flex;justify-content:center}.chart.center svg{width:160px}
 .gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .gallery figure{break-inside:avoid;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--soft)}
-.gallery img{width:100%;display:block;object-fit:contain;max-height:150mm}
+.gallery img{width:100%;display:block;object-fit:contain;max-height:110mm}
 .gallery figcaption{font-size:10.5px;color:var(--muted);padding:6px 10px}
 
 /* hero figure (best-day curve) + empty slot */
 .hero-fig{break-inside:avoid;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
 .hero-head{display:flex;align-items:center;gap:9px;padding:11px 16px;font-weight:800;font-size:12.5px;color:var(--ink);background:linear-gradient(90deg,var(--tint),#fff);border-bottom:1px solid var(--line)}
 .hero-head i{width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:none}
-.hero-fig img{display:block;width:100%;max-height:92mm;object-fit:contain;background:#fff;padding:8px 10px}
+.hero-fig img{display:block;width:100%;max-height:84mm;object-fit:contain;background:#fff;padding:8px 10px}
 .hero-fig figcaption{padding:8px 16px;font-size:10.5px;color:var(--muted);font-weight:600;background:var(--soft);border-top:1px solid var(--line)}
 .slot{break-inside:avoid;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62mm;border:1.5px dashed color-mix(in srgb,var(--accent) 40%,#cbd5e1);border-radius:18px;color:color-mix(in srgb,var(--accent) 55%,#94a3b8);
   background:repeating-linear-gradient(135deg,transparent 0 12px,color-mix(in srgb,var(--accent) 3.5%,transparent) 12px 24px),linear-gradient(180deg,var(--tint),#fff)}
@@ -555,12 +573,12 @@ body{font-family:Inter,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;co
 .ar-go{font-size:10px;font-weight:700;color:#0f766e;white-space:nowrap}
 
 /* ---------- at a glance ---------- */
-.tiles{display:grid;gap:14px}.tiles.t2{grid-template-columns:repeat(2,1fr)}.tiles.t3{grid-template-columns:repeat(3,1fr)}
-.tile{position:relative;overflow:hidden;border-radius:22px;padding:22px 22px 20px;border:1px solid var(--line);background:linear-gradient(160deg,var(--tint),#fff 75%);box-shadow:var(--shadow);min-height:44mm;break-inside:avoid;display:flex;flex-direction:column;justify-content:flex-end}
+.tiles{display:grid;gap:14px;grid-auto-rows:1fr;height:${o.paper === "Letter" ? "172mm" : "188mm"}}.tiles.t2{grid-template-columns:repeat(2,1fr)}.tiles.t3{grid-template-columns:repeat(3,1fr)}
+.tile{position:relative;overflow:hidden;border-radius:22px;padding:22px 22px 20px;border:1px solid var(--line);background:linear-gradient(160deg,var(--tint),#fff 75%);box-shadow:var(--shadow);min-height:44mm;break-inside:avoid;display:flex;flex-direction:column;justify-content:center}
 .tile::before{content:"";position:absolute;left:0;top:0;right:0;height:5px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
 .tile::after{content:"";position:absolute;right:-30px;top:-30px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent2) 22%,transparent),transparent 70%)}
 .tile.c1::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}.tile.c2::before{background:linear-gradient(90deg,#10b981,#34d399)}.tile.c3::before{background:linear-gradient(90deg,#8b5cf6,#a78bfa)}.tile.c4::before{background:linear-gradient(90deg,#f43f5e,#fb7185)}.tile.c5::before{background:linear-gradient(90deg,#14b8a6,#2dd4bf)}
-.tile-v{font-size:34px;font-weight:800;letter-spacing:-.035em;line-height:1;color:var(--ink)}
+.tile-v{font-size:44px;font-weight:800;letter-spacing:-.035em;line-height:1;color:var(--ink)}
 .tile-v span{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:5px 0 0;letter-spacing:.02em}
 .tile-l{margin-top:10px;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .tile-s{margin-top:3px;font-size:11px;color:var(--muted)}
@@ -575,7 +593,7 @@ body{font-family:Inter,"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;co
 .rec-kv .k{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}.rec-kv .v{font-weight:600;font-size:12px;white-space:pre-line;color:var(--ink)}
 .rec-photos{display:flex;gap:10px;margin:6px 0;align-items:flex-start}
 .figs{display:flex;gap:8px}.figs figure{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--soft);break-inside:avoid}
-.figs img{display:block;width:100%;max-height:105mm;object-fit:contain;background:#fff}
+.figs img{display:block;width:100%;max-height:80mm;object-fit:contain;background:#fff}
 .fn{display:block;margin-top:1px;font-size:6.5px;color:var(--muted);font-weight:500;word-break:break-all}.dl-note{margin:2mm 0 3mm;padding:2mm 3mm;border:1px dashed color-mix(in srgb,var(--accent) 45%,#fff);border-radius:6px;background:var(--tint);font-size:8px;color:var(--text)}
 .figs figcaption{font-size:9.5px;color:var(--muted);padding:4px 8px;font-weight:600}
 .rec-photos>.figs{flex:1 1 0;min-width:0}.rec-photos:not(.multi)>.figs{max-width:62%}

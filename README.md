@@ -99,3 +99,9 @@ PDF export runs headless Chromium. On Vercel the app automatically uses `@sparti
 4. Inter fonts are embedded from `fonts/`, so the PDF looks the same as locally.
 5. If a PDF still fails, open Vercel -> Logs for `/api/reports/.../pdf` and read the error; the app shows it in the toast too.
 Downloads are streamed, so Vercel's 4.5 MB response limit does not apply.
+
+## Tables from Excel (v4)
+- **Template builder -> Table field -> "Create from Excel sheet"**: choose an .xlsx / .csv (or paste cells). Columns, widths, alignment, group titles, repeated sub-headers and bold/"Total" rows are detected; numbers keep their Excel look (decimals, thousands, %). Optionally keep the sheet's rows as the starting rows of every new report.
+- **Table look**: striped rows, spreadsheet lines, compact, hide header. Per column: type, width, align, decimals, bold.
+- **In a report**: every row can be a Row / Group title / Sub-header / Total; "Import Excel / paste" adds rows to the table.
+- The export now: cover fills the page exactly, annexes have their own index page, photo file names/notes are no longer printed, the "At a glance" page fills the page.

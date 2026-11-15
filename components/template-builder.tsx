@@ -279,7 +279,7 @@ export function TemplateBuilder({ id, initialName, initialSchema }: { id: string
                 {([
                   ["text", "Text notes", "A paragraph you type each month"],
                   ["numbers", "Key numbers", "Values shown as stat cards (units, formulas and rings possible)"],
-                  ["table", "A table", "Columns you define – rows can be pasted from Excel"],
+                  ["table", "A table", "Columns you define – or create it from an Excel sheet"],
                   ["log", "Entries log with photos", "Add entries on different days; each has a date, details and photos"],
                 ] as const).map(([k, t, d]) => (
                   <label key={k} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted">

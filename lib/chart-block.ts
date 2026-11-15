@@ -38,8 +38,8 @@ export function chartSvg(b: Block, t: TemplateSchema, data: ReportData, width = 
 
   /* ---- source: table ---- */
   const tableBlock = allBlocks(t).find((x) => x.key === c.table);
-  const rows = (Array.isArray(data[c.table ?? ""]) ? (data[c.table ?? ""] as Row[]) : []).filter((r) =>
-    Object.values(r).some((v) => v !== "" && v != null),
+  const rows = (Array.isArray(data[c.table ?? ""]) ? (data[c.table ?? ""] as Row[]) : []).filter(
+    (r) => r.__k !== "group" && r.__k !== "head" && Object.entries(r).some(([k, v]) => k !== "__k" && v !== "" && v != null),
   );
   if (!rows.length || !tableBlock) return null;
   const label = (col?: string) => tableBlock.columns?.find((x) => x.key === col)?.label ?? col ?? "";

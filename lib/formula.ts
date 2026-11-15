@@ -201,7 +201,7 @@ export function makeResolver(t: TemplateSchema, data: ReportData): Resolver {
     switch (b.type) {
       case "records":
       case "table": {
-        const rows = Array.isArray(raw) ? (raw as Row[]) : [];
+        const rows = (Array.isArray(raw) ? (raw as Row[]) : raw === undefined && b.type === "table" ? b.defaultRows ?? [] : []).filter((r) => r.__k !== "group" && r.__k !== "head");
         return col ? rows.map((r) => toNumber(r[col])) : rows.map(() => 1);
       }
       case "list":
